@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sort"
 	"sync"
 	"time"
 )
@@ -36,6 +37,7 @@ type Entry struct {
 	Content  string
 	Type     string
 	Filename string
+	Modification_time string
 }
 
 type ExpirationTracker struct {
@@ -315,6 +317,15 @@ func main() {
 		entries := []Entry{}
 		// Read text snippets
 		textFiles, _ := os.ReadDir(filepath.Join("data", "text"))
+		sort.Slice(textFiles, func(i,j int) bool{
+			filei, errori := textFiles[i].Info()
+			filej, errorj := textFiles[j].Info()
+			if errori != nil && errorj != nil {
+				return false
+			} else {
+				return filei.ModTime().Before(filej.ModTime())
+			}
+		})
 		for _, file := range textFiles {
 			if file.IsDir() {
 				continue
@@ -323,23 +334,42 @@ func main() {
 			if err != nil {
 				continue
 			}
+			fileinfo, err := file.Info()
+			if err != nil {
+				continue
+			}
 			entries = append(entries, Entry{
 				ID:       filepath.Join("text", file.Name()),
 				Type:     "text",
 				Content:  string(data),
 				Filename: file.Name(),
+				Modification_time: fileinfo.ModTime().Format("2006-01-02 15:04:05"),
 			})
 		}
 		// Read files
 		files, _ := os.ReadDir(filepath.Join("data", "files"))
+		sort.Slice(files, func(i,j int) bool{
+			filei, errori := files[i].Info()
+			filej, errorj := files[j].Info()
+			if errori != nil && errorj != nil {
+				return false
+			} else {
+				return filei.ModTime().Before(filej.ModTime())
+			}
+		})
 		for _, file := range files {
 			if file.IsDir() {
+				continue
+			}
+			fileinfo, err := file.Info()
+			if err != nil {
 				continue
 			}
 			entries = append(entries, Entry{
 				ID:       filepath.Join("files", file.Name()),
 				Type:     "file",
 				Filename: file.Name(),
+				Modification_time: fileinfo.ModTime().Format("2006-01-02 15:04:05"),
 			})
 		}
 		// Read links
